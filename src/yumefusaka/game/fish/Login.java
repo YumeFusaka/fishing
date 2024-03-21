@@ -23,10 +23,12 @@ public class Login implements ActionListener {
         Class.forName("com.mysql.cj.jdbc.Driver");
         con = DriverManager.getConnection("jdbc:mysql://localhost:3306/fish_game", "root", "j");
 
-
         dialog = new JDialog((Frame) null, "Login", true); // 创建一个模态对话框
         dialog.setSize(400, 180);
-        dialog.setLayout(new GridLayout(3, 2)); // 设置布局管理器
+        dialog.setLayout(new GridLayout(3, 1)); // 设置布局管理器
+        JPanel p1 = new JPanel();
+        JPanel p2 = new JPanel();
+        JPanel p3 = new JPanel();
 
         // 添加登录表单的组件
         label = new JLabel("用户名");
@@ -49,13 +51,16 @@ public class Login implements ActionListener {
             }
         });
 
-        dialog.add(label);
-        dialog.add(jTextField);
-        dialog.add(label2);
-        dialog.add(passwordField);
-        dialog.add(loginButton);
-        dialog.add(exitButton);
-        // dialog.add(registerButton);
+        p1.add(label);
+        p1.add(jTextField);
+        p2.add(label2);
+        p2.add(passwordField);
+        p3.add(loginButton);
+        p3.add(exitButton);
+        p3.add(registerButton);
+        dialog.add(p1);
+        dialog.add(p2);
+        dialog.add(p3);
         dialog.setVisible(true);
     }
 
