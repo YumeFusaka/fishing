@@ -56,8 +56,8 @@ public class Login implements ActionListener {
         p2.add(label2);
         p2.add(passwordField);
         p3.add(loginButton);
-        p3.add(exitButton);
         p3.add(registerButton);
+        p3.add(exitButton);
         dialog.add(p1);
         dialog.add(p2);
         dialog.add(p3);
@@ -82,11 +82,11 @@ public class Login implements ActionListener {
             try {
                 ResultSet rs = stat.executeQuery(user_select);
                 if (rs!=null && rs.next()) {
-                    JOptionPane.showMessageDialog(null,"登录成功！" );
+                    JOptionPane.showMessageDialog(null,"登录成功!" );
                     Token.account=account;
                     dialog.dispose(); // 如果登录成功，关闭对话框
                 }else {
-                    JOptionPane.showMessageDialog(null, "用户名或密码错误！");
+                    JOptionPane.showMessageDialog(null, "用户名或密码错误!");
                 }
             } catch (SQLException ex) {
                 throw new RuntimeException(ex);
@@ -94,7 +94,30 @@ public class Login implements ActionListener {
         } else if (e.getSource() == exitButton) {
             System.exit(0); // 如果点击退出按钮，结束程序
         } else if (e.getSource()== registerButton){
-
+            // 验证用户名和密码...
+            String account = jTextField.getText();
+            String password = passwordField.getText();
+            String user_select = "select * from user where account = '"+ account +"' and password = '"+password+"'" ;
+            Statement stat = null;
+            try {
+                stat = con.createStatement();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+            try {
+                ResultSet rs = stat.executeQuery(user_select);
+                if (rs!=null && rs.next()) {
+                    JOptionPane.showMessageDialog(null,"此账号已被注册!" );
+                }else {
+                    stat.execute("insert into user values(null,'"+account+"','"+password+"')");
+                    stat.execute("insert into coin values(null,100,'"+account+ "')");
+                    JOptionPane.showMessageDialog(null, "注册成功,欢迎游玩!");
+                    Token.account=account;
+                    dialog.dispose();
+                }
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 }
