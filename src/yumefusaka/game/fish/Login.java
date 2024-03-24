@@ -24,8 +24,10 @@ public class Login implements ActionListener {
         con = DriverManager.getConnection("jdbc:mysql://localhost:3306/fish_game", "root", "j");
 
         dialog = new JDialog((Frame) null, "Login", true); // 创建一个模态对话框
-        dialog.setSize(400, 180);
+        dialog.setLocationRelativeTo(null);
+        dialog.setSize(360, 180);
         dialog.setLayout(new GridLayout(3, 1)); // 设置布局管理器
+
         JPanel p1 = new JPanel();
         JPanel p2 = new JPanel();
         JPanel p3 = new JPanel();

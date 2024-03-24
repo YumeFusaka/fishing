@@ -1,6 +1,8 @@
 package yumefusaka.game.fish;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -14,8 +16,9 @@ import javax.swing.*;
 
 public class FishGame {
 
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        new Login();
+    public static void main(String[] args) throws ClassNotFoundException, SQLException{
+        if(Token.account==null)
+            new Login();
 
         String account = Token.account;
 
@@ -52,7 +55,7 @@ public class FishGame {
         con.close();
 
         //加载鱼池
-        Pool pool = new Pool(num,account);
+        Pool pool = new Pool(num,account,jf);
         jf.add(pool);
         //显示框架
         jf.setVisible(true);
@@ -61,9 +64,10 @@ public class FishGame {
 }
 
 //鱼池类
-class Pool extends JPanel {
+class Pool extends JPanel{
     String account="";
     int coin = 0;
+    JFrame jf;
     private static final long serialVersionUID = 1L;
     BufferedImage bgImage;    //背景图片
     Fish[] fishs = new Fish[20];    //所有的鱼
@@ -72,8 +76,9 @@ class Pool extends JPanel {
 
     Connection con;
 
-    public Pool(int coin,String account) throws ClassNotFoundException, SQLException {
+    public Pool(int coin,String account,JFrame jFrame) throws ClassNotFoundException, SQLException {
         super();
+        this.jf = jFrame;
         this.coin = coin;
         this.account = account;
         //1、导入驱动jar包
@@ -109,14 +114,14 @@ class Pool extends JPanel {
 
         //画游戏说明文字
         g.setColor(Color.PINK);
-        g.setFont(new Font("楷体", Font.ITALIC, 18));
+        g.setFont(new Font("宋体", Font.BOLD, 18));
         g.drawString("捕鱼达人", 10, 25);
         g.drawString("用户名:" + account, 150, 25);
         g.drawString("金币数:" + coin , 330, 25);
-        g.drawString("右键切换渔网    Level:" + (net.power % 7 + 1), 480, 25);
+        g.drawString("右键切换渔网    渔网等级:" + (net.power % 7 + 1), 480, 25);
         if (coin <= 0) {
             g.setColor(Color.RED);
-            g.setFont(new Font("楷体", Font.BOLD, 100));
+            g.setFont(new Font("宋体", Font.PLAIN, 100));
             g.drawString("Game Over", 150, 250);
             coin = 0;
             String coin_update = "update coin set num = 0 where account = '" + account + "'";
@@ -148,13 +153,14 @@ class Pool extends JPanel {
                     //减子弹
                     if (coin - (net.power % 7 + 1) <= 0) {
                         coin = 0;
+                        recharge();
                     } else {
                         coin -= (net.power % 7 + 1);
                     }
                     String coin_update = "update coin set num = " + coin +" where account = '" + account + "'";
                     try {
                         Statement stat = con.createStatement();
-                        int rs = stat.executeUpdate(coin_update);
+                        stat.executeUpdate(coin_update);
                     } catch (SQLException e1) {
                         throw new RuntimeException(e1);
                     }
@@ -200,12 +206,80 @@ class Pool extends JPanel {
             String coin_update = "update coin set num = " + coin +" where account = '" + account + "'";
             try {
                 Statement stat = con.createStatement();
-                int rs = stat.executeUpdate(coin_update);
+                stat.executeUpdate(coin_update);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
         }
     }
+
+    int reCoin = 0;
+    int[] val= new int[]{0, 50, 100, 500, 1000, 2000, 5000};
+    JButton []b = new JButton[7];
+    JButton complete;
+    JLabel label3;
+    JDialog jd;
+    //充值的方法
+    public void recharge(){
+        jd = new JDialog(jf,"充值",true);
+        jd.setLocationRelativeTo(null);
+        jd.setLayout(new GridLayout(2, 1));
+        jd.setSize(600,600);
+        JPanel jp = new JPanel();
+        jp.setLayout(null);
+        for(int i=1;i <= 6; i++){
+            int row=i/4,col=i-row*3;
+            b[i]=new JButton(val[i]+"金币");
+            int finalI = i;
+            b[i].addActionListener(e->{
+                reCoin = val[finalI];
+                label3.setText("    您将支付:"+ reCoin +"人民币");
+            });
+            jp.add(b[i]);
+            b[i].setBounds(180*(col-1)+col*15,120*row+20*(row+1),180,120);
+        }
+        complete = new JButton("已完成支付");
+        complete.addActionListener(e->{
+            JDialog over =new JDialog(jf);
+            over.setLocationRelativeTo(null);
+            JLabel text = new JLabel("您已成功充值"+reCoin+"金币,请继续游玩");
+            over.setSize(250,100);
+            coin=reCoin;
+            reCoin=0;
+            String coin_update = "update coin set num = "+coin+" where account = '" + account + "'";
+            Statement stat = null;
+            try {
+                stat = con.createStatement();
+                stat.executeUpdate(coin_update);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+            over.add(text);
+            over.setVisible(true);
+            jd.dispose();
+        });
+        jd.add(jp);
+        jp.setBounds(0,0,300,300);
+        JPanel jp2 = new JPanel();
+        jp2.setLayout(new GridLayout(1,2));
+        JLabel label = new JLabel();
+        label.setIcon(new ImageIcon("images/666.png"));//文件路径
+        jp2.add(label);
+        JPanel jp3 =new JPanel();
+        jp3.setLayout(new GridLayout(3,1));
+        JLabel label2 = new JLabel();
+        label2.setText("    请扫码左侧二维码付款 (10金币=1人民币)");
+        label3 = new JLabel();
+        label3.setText("    您将支付:"+ reCoin +"人民币");
+        jp3.add(label2);
+        jp3.add(label3);
+        jp3.add(complete);
+        jp2.add(jp3);
+        jd.add(jp2);
+        jp2.setBounds(0,300,300,300);
+        jd.setVisible(true);
+    }
+
 }
 
 //鱼类
