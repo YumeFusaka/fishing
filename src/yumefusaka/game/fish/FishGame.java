@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.Random;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 public class FishGame {
 
@@ -29,6 +31,7 @@ public class FishGame {
         jf.setResizable(false);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setAlwaysOnTop(true);
+
 
 
         //1、导入驱动jar包
@@ -56,7 +59,10 @@ public class FishGame {
 
         //加载鱼池
         Pool pool = new Pool(num,account,jf);
-        jf.add(pool);
+        pool.setLayout(null);
+        jf.getContentPane().add(pool);
+
+
         //显示框架
         jf.setVisible(true);
         pool.action();
@@ -99,11 +105,50 @@ class Pool extends JPanel{
         }
         fishs[18] = new Fish(10);
         fishs[19] = new Fish(11);
+
+        ImageIcon icon = new ImageIcon("images/shangdian.png");
+        ImageIcon finalIcon = icon;
+        JButton shop = new JButton(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(finalIcon.getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        icon = new ImageIcon("images/chongzhi.png");
+        ImageIcon finalIcon1 = icon;
+        JButton recharge = new JButton(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(finalIcon1.getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        this.add(shop);
+        this.add(recharge);
+        shop.setBounds(710,380,50,50);
+        recharge.setBounds(630,380,50,50);
+
+        shop.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.out.println("Button clicked!");
+            }
+        });
+
+        recharge.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                recharge();
+            }
+        });
+
     }
 
     //画游戏元素
     @Override
-    public void paint(Graphics g) {
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         g.drawImage(bgImage, 0, 0, null);    //画背景
         for (Fish fish : fishs) {
             g.drawImage(fish.fishImage, fish.fish_x, fish.fish_y, null);    //画鱼
@@ -227,9 +272,27 @@ class Pool extends JPanel{
         jd.setSize(600,600);
         JPanel jp = new JPanel();
         jp.setLayout(null);
+        ImageIcon icon = new ImageIcon("images/jinbiduihuan1.png");
+        JLabel label;
         for(int i=1;i <= 6; i++){
             int row=i/4,col=i-row*3;
-            b[i]=new JButton(val[i]+"金币");
+            b[i]=new JButton(){
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.drawImage(icon.getImage(), 0, 0, getWidth(), getHeight(), this);
+                }
+            };
+            label= new JLabel("    "+val[i]+"金币");
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setVerticalAlignment(SwingConstants.CENTER);
+            label.setBackground(new Color(0, 0, 255, 125)); // RGBA values
+            // 创建一个新的字体对象
+            Font font = new Font("宋体", Font.BOLD, 20);
+            // 使用setFont方法设置JLabel的字体
+            label.setFont(font);
+            label.setForeground(Color.WHITE);
+            b[i].add(label);
             int finalI = i;
             b[i].addActionListener(e->{
                 reCoin = val[finalI];
@@ -237,8 +300,30 @@ class Pool extends JPanel{
             });
             jp.add(b[i]);
             b[i].setBounds(180*(col-1)+col*15,120*row+20*(row+1),180,120);
+            
         }
-        complete = new JButton("已完成支付");
+        complete = new JButton(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                int width = getWidth();
+                int height = getHeight();
+                GradientPaint gp = new GradientPaint(0, 0, Color.RED, width, height, Color.BLUE);
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, width, height);
+            }
+        };
+
+        label = new JLabel("       已完成支付");
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        label.setVerticalAlignment(SwingConstants.CENTER);
+        // 创建一个新的字体对象
+        Font font = new Font("宋体", Font.BOLD, 20);
+        // 使用setFont方法设置JLabel的字体
+        label.setFont(font);
+        label.setForeground(Color.WHITE);
+
         complete.addActionListener(e->{
             JDialog over =new JDialog(jf);
             over.setLocationRelativeTo(null);
@@ -258,11 +343,12 @@ class Pool extends JPanel{
             over.setVisible(true);
             jd.dispose();
         });
+        complete.add(label);
         jd.add(jp);
         jp.setBounds(0,0,300,300);
         JPanel jp2 = new JPanel();
         jp2.setLayout(new GridLayout(1,2));
-        JLabel label = new JLabel();
+        label = new JLabel();
         label.setIcon(new ImageIcon("images/666.png"));//文件路径
         jp2.add(label);
         JPanel jp3 =new JPanel();
@@ -456,4 +542,5 @@ class Net {
         return fish.blood <= 0;
     }
 }
+
 
