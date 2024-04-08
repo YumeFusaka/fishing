@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
@@ -43,7 +44,7 @@ public class FishGame {
 
         //4、定义sql语句
         //String user_sql = "select * from user where ";
-        String coin_select = "select num from coin where account = '" + account + "'";
+        String coin_select = "select num,rocket,bomb,chao from coin where account = '" + account + "'";
 
         //5、获取执行sql语句的对象
         Statement stat = con.createStatement();
@@ -52,13 +53,15 @@ public class FishGame {
         ResultSet rs = stat.executeQuery(coin_select);
         rs.next();
         int num = rs.getInt("num");
-
+        int rocket = rs.getInt("rocket");
+        int bomb = rs.getInt("bomb");
+        int chao = rs.getInt("chao");
         //8、释放资源
         stat.close();
         con.close();
 
         //加载鱼池
-        Pool pool = new Pool(num,account,jf);
+        Pool pool = new Pool(num,rocket,bomb,chao,account,jf);
         pool.setLayout(null);
         jf.getContentPane().add(pool);
 
@@ -72,7 +75,7 @@ public class FishGame {
 //鱼池类
 class Pool extends JPanel{
     String account="";
-    int coin = 0;
+    int coin = 0,rocket=0,bomb=0,chao=0;
     JFrame jf;
     private static final long serialVersionUID = 1L;
     BufferedImage bgImage;    //背景图片
@@ -81,12 +84,16 @@ class Pool extends JPanel{
     boolean isExit;    //鼠标是否在游戏界面
 
     Connection con;
-
-    public Pool(int coin,String account,JFrame jFrame) throws ClassNotFoundException, SQLException {
+    int[] t_val;
+    public Pool(int v_coin,int v_rocket,int v_bomb,int v_chao,String account,JFrame jFrame) throws ClassNotFoundException, SQLException {
         super();
         this.jf = jFrame;
-        this.coin = coin;
+        this.coin = v_coin;
+        this.rocket = v_rocket;
+        this.bomb = v_bomb;
+        this.chao = v_chao;
         this.account = account;
+        t_val = new int[]{v_rocket,v_bomb,v_chao};
         //1、导入驱动jar包
         //2、注册驱动
         Class.forName("com.mysql.cj.jdbc.Driver");
@@ -132,16 +139,48 @@ class Pool extends JPanel{
         shop.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                System.out.println("Button clicked!");
+                shop();
             }
         });
 
         recharge.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                recharge();
+                recharge(false);
             }
         });
+
+        JLabel bomb = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/bomb.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+
+
+        JLabel chao = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/chao.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+
+
+        JLabel rocket = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/rocket.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        chao.setBounds(520,380,50,50);
+        rocket.setBounds(320,380,50,50);
+        bomb.setBounds(420,380,50,50);
+        this.add(bomb);
+        this.add(chao);
+        this.add(rocket);
 
     }
 
@@ -157,6 +196,7 @@ class Pool extends JPanel{
             g.drawImage(net.netImage, net.netX, net.netY, null);    //画网
         }
 
+
         //画游戏说明文字
         g.setColor(Color.PINK);
         g.setFont(new Font("宋体", Font.BOLD, 18));
@@ -164,6 +204,10 @@ class Pool extends JPanel{
         g.drawString("用户名:" + account, 150, 25);
         g.drawString("金币数:" + coin , 330, 25);
         g.drawString("右键切换渔网    渔网等级:" + (net.power % 7 + 1), 480, 25);
+
+        g.drawString(":"+t_val[0], 372, 407);
+        g.drawString(":"+t_val[1], 472, 407);
+        g.drawString(":"+t_val[2], 572, 407);
         if (coin <= 0) {
             g.setColor(Color.RED);
             g.setFont(new Font("宋体", Font.PLAIN, 100));
@@ -198,9 +242,14 @@ class Pool extends JPanel{
                     //减子弹
                     if (coin - (net.power % 7 + 1) <= 0) {
                         coin = 0;
-                        recharge();
+                        recharge(true);
                     } else {
                         coin -= (net.power % 7 + 1);
+                    }
+                    try {
+                        update(-1*(net.power % 7 + 1));
+                    } catch (SQLException ex) {
+                        throw new RuntimeException(ex);
                     }
                     String coin_update = "update coin set num = " + coin +" where account = '" + account + "'";
                     try {
@@ -243,6 +292,19 @@ class Pool extends JPanel{
         }
     }
 
+    Connection t_con;
+    Statement t_stat;
+    public void update(int t_coin) throws SQLException {
+        t_con = DriverManager.getConnection("jdbc:mysql://localhost:3306/fish_game", "root", "j");
+        t_stat = con.createStatement();
+        String sql = "insert into record(account,consume,create_time)  values(?,?,?)";
+        PreparedStatement statement = con.prepareStatement(sql);
+        statement.setString(1,account);
+        statement.setInt(2,t_coin);
+        statement.setString(3, LocalDateTime.now().toString());
+        statement.executeUpdate();
+    }
+
     //封装捕鱼的方法
     public void catchFish(Fish fish) {
         fish.catched = net.catchFish(fish);
@@ -251,6 +313,7 @@ class Pool extends JPanel{
             String coin_update = "update coin set num = " + coin +" where account = '" + account + "'";
             try {
                 Statement stat = con.createStatement();
+                update(2*fish.k);
                 stat.executeUpdate(coin_update);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
@@ -264,8 +327,10 @@ class Pool extends JPanel{
     JButton complete;
     JLabel label3;
     JDialog jd;
+
+    JDialog shop;
     //充值的方法
-    public void recharge(){
+    public void recharge(boolean sign){
         jd = new JDialog(jf,"充值",true);
         jd.setLocationRelativeTo(null);
         jd.setLayout(new GridLayout(2, 1));
@@ -329,9 +394,17 @@ class Pool extends JPanel{
             over.setLocationRelativeTo(null);
             JLabel text = new JLabel("您已成功充值"+reCoin+"金币,请继续游玩");
             over.setSize(250,100);
-            coin=reCoin;
+            if(!sign)
+                coin+=reCoin;
+            else
+                coin=reCoin;
             reCoin=0;
             String coin_update = "update coin set num = "+coin+" where account = '" + account + "'";
+            try {
+                update(reCoin);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
             Statement stat = null;
             try {
                 stat = con.createStatement();
@@ -366,6 +439,109 @@ class Pool extends JPanel{
         jd.setVisible(true);
     }
 
+    public void shop(){
+        shop = new JDialog(jf,"商店",true);
+        shop.setLocationRelativeTo(null);
+        shop.setSize(600,250);
+        JLabel rocket_label = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/rocket.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+
+        JLabel bomb_label = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/bomb.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+
+        JLabel chao_label = new JLabel(){
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage((new ImageIcon("images/chao.png")).getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        JLabel rocket_text = new JLabel("鱼雷: 25金币");
+        JLabel bomb_text = new JLabel("炸弹: 50金币");
+        JLabel chao_text = new JLabel("超声波: 100金币");
+        JButton rocket_buy = new JButton("购买");
+        JButton bomb_buy = new JButton("购买");
+        JButton chao_buy = new JButton("购买");
+        rocket_buy.addActionListener(e->{
+            try {
+                result(coin>=25,25,0,shop);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+        bomb_buy.addActionListener(e->{
+            try {
+                result(coin>=50,50,1,shop);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+        chao_buy.addActionListener(e->{
+            try {
+                result(coin>=100,100,2,shop);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+        shop.setLayout(null);
+        shop.add(bomb_label);
+        shop.add(rocket_label);
+        shop.add(chao_label);
+        shop.add(rocket_text);
+        shop.add(bomb_text);
+        shop.add(chao_text);
+        shop.add(rocket_buy);
+        shop.add(bomb_buy);
+        shop.add(chao_buy);
+        rocket_label.setBounds(50,10,100,100);
+        bomb_label.setBounds(220,10,100,100);
+        chao_label.setBounds(390,10,100,100);
+        rocket_text.setBounds(70,110,110,30);
+        bomb_text.setBounds(240,110,110,30);
+        chao_text.setBounds(410,110,110,30);
+        rocket_buy.setBounds(60,140,90,30);
+        bomb_buy.setBounds(230,140,90,30);
+        chao_buy.setBounds(400,140,90,30);
+        shop.setVisible(true);
+    }
+    String[] t_type =new String[]{"rocket","bomb","chao"};
+    public void result(boolean flag,int t_coin,int type,JDialog jj) throws SQLException {
+        if(flag){
+            coin-=t_coin;
+            val[type]+=1;
+            Statement statement = con.createStatement();
+            String sql = "update coin set ? = ? ,coin = ? where account = ?";
+            PreparedStatement preparedStatement = con.prepareStatement(sql);
+            preparedStatement.setString(1,t_type[type]);
+            preparedStatement.setInt(2,t_val[type]);
+            preparedStatement.setInt(3,coin-t_coin);
+            preparedStatement.setString(4,account);
+            update(-1*t_coin);
+            JDialog over =new JDialog(jj);
+            over.setLocationRelativeTo(null);
+            JLabel text = new JLabel("   成功购买");
+            over.setSize(200,80);
+            over.add(text);
+            over.setVisible(true);
+        }else{
+            JDialog over =new JDialog(jj);
+            over.setLocationRelativeTo(null);
+            JLabel text = new JLabel("   金币不足");
+            over.setSize(200,80);
+            over.add(text);
+            over.setVisible(true);
+        }
+    }
 }
 
 //鱼类
